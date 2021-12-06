@@ -4,3 +4,4 @@ export * from './vehiculo.model';
 export * from './cliente.model';
 export * from './solicitud.model';
 export * from './codeudor.model';
+export * from './credenciales.model';

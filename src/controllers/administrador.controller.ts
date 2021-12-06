@@ -1,30 +1,60 @@
+import {service} from '@loopback/core';
 import {
   Count,
   CountSchema,
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
-  requestBody,
-  response,
+  del, get,
+  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
+  response
 } from '@loopback/rest';
-import {Administrador} from '../models';
+import { create } from 'domain';
+import {Llaves} from '../config/llaves';
+import {Administrador, Credenciales} from '../models';
 import {AdministradorRepository} from '../repositories';
+import {AutenticacionService} from '../services';
+const fetch = require('node-fetch');
 
 export class AdministradorController {
   constructor(
     @repository(AdministradorRepository)
-    public administradorRepository : AdministradorRepository,
-  ) {}
+    public administradorRepository: AdministradorRepository,
+    @service(AutenticacionService)
+    public servicioAutenticacion: AutenticacionService,
+  ) { }
+
+@post("/identificarAdministrador", {
+  responses : {
+    '200' : {
+      description : "Identificación de usuarios"      
+    }
+  }
+})
+
+async identificarAdministrador(
+  @requestBody() credenciales: Credenciales
+){
+let p = await this.servicioAutenticacion.IdentificarAdministrador(credenciales.usuario, credenciales.clave);
+if(p){
+  let token = this.servicioAutenticacion.GenerarTokenJWT(p);
+  return {
+    datos: {
+      nombre: p.nombres,
+      correo: p.correo,
+      id: p.id    
+    },
+    tk:token
+  }
+} else{
+  throw new HttpErrors[401]("Datos inválidos");
+  }
+
+}
+
 
   @post('/administradores')
   @response(200, {
@@ -44,8 +74,25 @@ export class AdministradorController {
     })
     administrador: Omit<Administrador, 'id'>,
   ): Promise<Administrador> {
-    return this.administradorRepository.create(administrador);
+
+    let clave = this.servicioAutenticacion.GenerarClave();
+    let claveCifrada = this.servicioAutenticacion.CifrarClave(clave);
+    administrador.clave = claveCifrada;
+
+    let p = await this.administradorRepository.create(administrador);
+
+    //Notificar al usuario
+    let destino = administrador.correo;
+    let asunto = 'Registro en la plataforma';
+    let contenido = `Hola ${administrador.nombres}, su nombre de usuario es : ${administrador.correo} y su contraseña es: ${clave}`;
+    fetch(`${Llaves.urlServicioNotificaciones}/envio-correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
+      .then((data: any) => {
+        console.log(data);
+      })
+    return p;
+
   }
+
 
   @get('/administradores/count')
   @response(200, {
@@ -147,4 +194,6 @@ export class AdministradorController {
   async deleteById(@param.path.string('id') id: string): Promise<void> {
     await this.administradorRepository.deleteById(id);
   }
+
+
 }
