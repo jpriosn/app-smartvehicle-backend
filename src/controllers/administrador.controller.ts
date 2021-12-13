@@ -12,7 +12,6 @@ import {
   getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import { create } from 'domain';
 import {Llaves} from '../config/llaves';
 import {Administrador, Credenciales} from '../models';
 import {AdministradorRepository} from '../repositories';
@@ -30,7 +29,7 @@ export class AdministradorController {
 @post("/identificarAdministrador", {
   responses : {
     '200' : {
-      description : "Identificación de usuarios"      
+      description : "Identificación de usuarios"
     }
   }
 })
@@ -45,7 +44,7 @@ if(p){
     datos: {
       nombre: p.nombres,
       correo: p.correo,
-      id: p.id    
+      id: p.id
     },
     tk:token
   }
